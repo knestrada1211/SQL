@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8"?><sqlb_project><db path="Kickstart Project Analysis.db" readonly="0" foreign_keys="0" case_sensitive_like="0" temp_store="0" wal_autocheckpoint="1000" synchronous="2"/><attached/><window><main_tabs open="structure browser pragmas query" current="3"/></window><tab_structure><column_width id="0" width="300"/><column_width id="1" width="0"/><column_width id="2" width="100"/><column_width id="3" width="1652"/><column_width id="4" width="0"/><expanded_item id="0" parent="1"/><expanded_item id="1" parent="1"/><expanded_item id="2" parent="1"/><expanded_item id="3" parent="1"/></tab_structure><tab_browse><table title="kickstart_projects" custom_title="0" dock_id="1" table="4,18:mainkickstart_projects"/><dock_state state="000000ff00000000fd00000001000000020000000000000000fc0100000001fb000000160064006f0063006b00420072006f00770073006500310100000000ffffffff0000010100ffffff000000000000000000000004000000040000000800000008fc00000000"/><default_encoding codec=""/><browse_table_settings/></tab_browse><tab_sql><sql name="SQL 1*">-- Kickstart Projects Analysis
+--Author: Keila Estrada
+-- This project evaluates Kickstarter data to assess project success rates, average funding performance, and category-level risk.
+-- The goal is to provide data-driven recommendations for better allocation of funding based on success patterns and performance indicators.
+
+-- ===========================================
+-- 1. General Overview of Dataset
+-- ===========================================
+
+SELECT * 
+FROM kickstart_projects
+
+
+--Based on the data table, the column main category seems to be the most refined, so I will base most of my data off that--
+--There are other various sub categories, that have the potential to be evaluated later on.--
+
+--I will be reviewing the total count of projects based on main category--
+
+-- ===========================================
+-- 2. Total Projects by Main Category
+-- ===========================================
+
+SELECT main_category, COUNT(*) AS total_projects
+FROM kickstart_projects
+GROUP BY main_category
+ORDER BY total_projects DESC;
+
+-- Film &amp; Video has the highest number of projects, making it the most popular main category by volume.--
+--Let's run a table to determine what are the most popular sub categories within this project category--
+
+-- ===========================================
+-- 3. Subcategories in Film &amp; Video
+-- ===========================================
+
+SELECT category, COUNT(*) AS total_projects
+FROM kickstart_projects
+WHERE main_category = 'Film &amp; Video'
+GROUP BY category
+ORDER BY total_projects DESC;
+
+--After running this report, Documentaries are the most popular projects within the Film &amp; Video category--
+--We will use this to review later--
+
+--Let's see how many of the main category projects were successful--
+
+-- ===========================================
+-- 4. Successful Projects by Main Category
+-- ===========================================
+
+SELECT main_category, COUNT(*) AS successful_projects
+FROM kickstart_projects
+WHERE state = 'successful'
+GROUP BY main_category
+ORDER BY successful_projects DESC;
+
+--Based on the data, the Music category had the most successful projects, with Film &amp; Video coming in second--
+--Let's see which music sub categories had the most successful projects--
+
+-- ===========================================
+-- 5. Successful Music Subcategories
+-- ===========================================
+
+SELECT category, COUNT(*) AS successful_projects
+FROM kickstart_projects
+WHERE state = 'successful' and main_category = 'Music'
+GROUP BY category
+ORDER BY successful_projects DESC;
+
+--Although some sumbategories were listed as music as well, the second highest to this was Indie Rock. This can be a recommendation for future bookkeeping, to be more precise on how subcategories are entered to have more precise data--
+
+--Lets determine the success rate for each main category--
+
+-- ===========================================
+-- 6. Success Rate by Main Category
+-- ===========================================
+
+SELECT main_category, COUNT(*) AS total_projects,
+  SUM(CASE WHEN state = 'successful' THEN 1 ELSE 0 END) AS successful_projects,
+  ROUND(
+    SUM(CASE WHEN state = 'successful' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 
+    2
+  ) AS success_rate_percent
+FROM kickstart_projects
+GROUP BY main_category
+ORDER BY success_rate_percent DESC;
+
+--Based on the data, Dance had the highest success rate at 62.25 --
+
+--I want to look at the projects and their average funding percentage earned--
+
+-- ===========================================
+-- 7. Average Funding Percentage by Category
+-- ===========================================
+SELECT 
+  main_category,
+  COUNT(*) AS total_projects,
+  ROUND(AVG(pledged * 100.0 / goal), 0) AS avg_funding_percent
+FROM kickstart_projects
+WHERE goal &gt; 0 AND pledged IS NOT NULL
+GROUP BY main_category
+ORDER BY avg_funding_percent DESC;
+
+--Based on this data although Dance had the highest success rate, it is not listed as the top 5 when it comes to average funding earned--
+
+--By reviewing the number of backers, Film &amp; Video also had the most backers for projects--
+
+-- ===========================================
+-- 8. Total Backers by Main Category
+-- ===========================================
+
+SELECT main_category, SUM(backers) AS total_backers
+FROM kickstart_projects
+GROUP BY main_category
+ORDER BY total_backers DESC;
+
+--Let's compare the success rate versus the average funding percentage--
+
+-- ===========================================
+-- 9. Success Rate vs. Funding Percent
+-- ===========================================
+
+SELECT 
+  main_category,
+  COUNT(*) AS total_projects,
+  ROUND(
+    SUM(CASE WHEN state = 'successful' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 
+    2
+  ) AS success_rate_percent,
+  ROUND(AVG(pledged * 100.0 / goal), 2) AS avg_funding_percent
+FROM kickstart_projects
+WHERE goal &gt; 0 AND pledged IS NOT NULL
+GROUP BY main_category
+ORDER BY success_rate_percent DESC;
+
+-- This query compares success rate and average funding percentage.
+-- Categories with high success rates but low average funding might be underfunded relative to their potential.
+-- Conversely, high average funding with low success could suggest inefficiency or project bloat.
+
+--Let's explore the failed and canceled projects--
+
+-- ===========================================
+-- 10. Failed &amp; Canceled Projects by Category
+-- ===========================================
+
+SELECT main_category,
+  SUM(CASE WHEN state = 'failed' THEN 1 ELSE 0 END) AS failed_projects,
+  SUM(CASE WHEN state = 'canceled' THEN 1 ELSE 0 END) AS canceled_projects
+FROM kickstart_projects
+GROUP BY main_category
+ORDER BY failed_projects DESC;
+
+-- This demonstrates that some of the funding for these particular categories should be considered, as there is a risk of these projects being cancelled or failed--
+
+-- ===========================================
+-- Conclusion and Recommendations
+-- ===========================================
+
+-- Based on the analysis:
+-- - Film &amp; Video has the most projects and backers, but not the highest success rate.
+-- - Dance, though less common, has the highest success rate and deserves more funding consideration.
+-- - Music and Games also show strong success in subcategories like Indie Rock and Tabletop Games.
+-- - Categories like Film &amp; Video and Publishing show higher failure and cancellation risk, suggesting a need for more cautious investment.
+
+-- Recommendation:
+-- Reallocate a portion of funding from historically low-performing categories to those with high success rates but lower average funding,
+-- such as Dance or specific subcategories within Music and Film &amp; Video.
+
+
+
+
+
+
+</sql><current_tab id="0"/></tab_sql></sqlb_project>
