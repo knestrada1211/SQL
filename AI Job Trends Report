@@ -1,0 +1,282 @@
+--AI Job Trends Report--
+--Author: Keila Estrada--
+--The purpose of this project is to determine the impact of Artificial Inteligence (AI) and how it is transforming the job market. I woud like to identify job trends, and how certain jobs are increasing or decreasing due to AI--
+--I will also be using this project to determine how the requirements for specific jobs are changing, to address the difficulty of the job market in todays job market--
+
+--I will first be running the initial table to determine the data--
+
+SELECT *
+FROM ai_job_trends_dataset
+
+--The table is divided up by various categories, but I would first like to see how many industries are listed in this data set--
+
+SELECT industry, COUNT(*) AS total_job_titles
+FROM ai_job_trends_dataset
+GROUP BY industry
+ORDER BY total_job_titles DESC;
+
+--This table demonstrates the amount of job titles listed in this data set, with 3895 of those job titles being in the entertainment industry--
+
+--How many job openings there were in each industry--
+SELECT  industry,
+  SUM("Job Openings (2024)") AS total_openings_2024
+FROM ai_job_trends_dataset
+GROUP BY  industry
+ORDER BY total_openings_2024 DESC;
+
+SELECT SUM([Job Openings (2024)]) AS total_openings_2024
+FROM ai_job_trends_dataset;
+
+--Based on this data, the entertainment industry has the most total openings reported in 2024--
+
+--I would like to use the data found in the amount of job openings in 2024, versus the projected openings in 2030 to indicate the projected growth percent in the job market. I will be calculating the projected growth percent in total jobs, as well as specifying the industries--
+
+--Total growth--
+SELECT 
+  SUM("Job Openings (2024)") AS total_openings_2024,
+  SUM("Projected Openings (2030)") AS total_openings_2030,
+  SUM("Projected Openings (2030)") - SUM("Job Openings (2024)") AS projected_growth,
+  ROUND(
+    (SUM("Projected Openings (2030)") - SUM("Job Openings (2024)")) * 100.0 / SUM("Job Openings (2024)"),
+    2
+  ) AS projected_growth_percent
+FROM ai_job_trends_dataset;
+
+--Projected Growth Percent by Industry--
+SELECT 
+  industry,
+  SUM("Job Openings (2024)") AS total_openings_2024,
+  SUM("Projected Openings (2030)") AS total_openings_2030,
+  SUM("Projected Openings (2030)") - SUM("Job Openings (2024)") AS projected_growth,
+  ROUND(
+    (SUM("Projected Openings (2030)") - SUM("Job Openings (2024)")) * 100.0 / NULLIF(SUM("Job Openings (2024)"), 0),
+    2
+  ) AS projected_growth_percent
+FROM ai_job_trends_dataset
+GROUP BY industry
+ORDER BY projected_growth_percent DESC;
+
+--Based on this data, we can see that the IT industry is expected to have a projected growth percent of 2.79, with it being the highest industry with projected growth till 2030. Industries such as Education and Transportation are expected to have a negative projected growth percentage demonstrating that the job market will be stagnant, no new job openings will be created, or individuals may lose their job as well.--
+--With this interpretation, let's see if AI has something to do with these results, or if there may be other indicators which may impact the job market--
+
+SELECT 
+  industry,
+  "AI Impact Level",
+  COUNT(*) AS total_jobs,
+  ROUND(
+    COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (PARTITION BY industry), 
+    2
+  ) AS impact_percent
+FROM ai_job_trends_dataset
+GROUP BY industry, "AI Impact Level"
+ORDER BY industry, impact_percent DESC;
+
+--Although the Education industry is projected to decline in total job openings by 2030, it has a low AI impact level, suggesting that the shrinking of roles is not due to automation, but other external factors (e.g., funding cuts, demographic shifts).
+--In contrast, industries like Finance or Administrative Services may grow or remain stable, yet face a high AI impact, indicating that while jobs are available, their long-term security may be more volatile due to automation.
+
+--Let's see what industries have the highest AI impact percent--
+
+SELECT 
+  industry,
+  COUNT(*) FILTER (WHERE "AI Impact Level" = 'High') * 100.0 / COUNT(*) AS high_impact_percent
+FROM ai_job_trends_dataset
+GROUP BY industry
+ORDER BY high_impact_percent DESC;
+
+-- In this query, we can see that Finance has the highest AI impact percent, followed by IT, however, industries like Education and Entertainment have the lowest AI impact percent.--
+
+--This next query demonstrates the percentage of jobs in each industry with a high AI impact--
+SELECT 
+  industry,
+  COUNT(*) FILTER (WHERE "AI Impact Level" = 'High') * 100.0 / COUNT(*) AS high_impact_percent,
+  SUM("Job Openings (2024)") AS total_2024,
+  SUM("Projected Openings (2030)") AS total_2030,
+  SUM("Projected Openings (2030)") - SUM("Job Openings (2024)") AS projected_change,
+  ROUND(
+    (SUM("Projected Openings (2030)") - SUM("Job Openings (2024)")) * 100.0 / NULLIF(SUM("Job Openings (2024)"), 0),
+    2
+  ) AS projected_growth_percent
+FROM ai_job_trends_dataset
+GROUP BY industry
+ORDER BY high_impact_percent DESC;
+
+--This table demonstrates for industries such as Finance with a high AI impact rate, the projected change in total jobs by 2030 is 0.21 percent which represents stagnancy in that industry.--
+--However, in industries such as IT and healthcare, the AI Impact rate is still high, but the projected growth rate is the highest.--
+---Industies like Education have the lowest AI impact percent with the projected growth in the negatives--
+
+--In this next data set, i would like to see if jobs requiring higher education have lower AI risk--
+SELECT 
+  "Required Education",
+  "AI Impact Level",
+  COUNT(*) AS job_count,
+  ROUND(
+    COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (PARTITION BY "Required Education"),
+    2
+  ) AS impact_percent
+FROM ai_job_trends_dataset
+GROUP BY "Required Education", "AI Impact Level"
+ORDER BY "Required Education", impact_percent DESC;
+
+--The table represents how an associates degree and high school diploma have the highest AI impact level, however, a bachelors and up have low to moderate AI impact levels--
+
+--Lets take a look to see if higher paying jobs tend to have a lower AI impact--
+SELECT 
+  "AI Impact Level",
+  ROUND(AVG("Median Salary (USD)"), 0) AS avg_salary
+FROM ai_job_trends_dataset
+GROUP BY "AI Impact Level"
+ORDER BY avg_salary DESC;
+
+--This table demonstrates that the higher the AI Impact level, the higher the average salary--
+
+--Aside from these numbers, we can also take a look at remote work flexbility by industry to see if remote works have a corralation to these job industries--
+
+SELECT 
+  industry,
+  ROUND(AVG("Remote Work Ratio (%)"), 2) AS avg_remote_ratio
+FROM ai_job_trends_dataset
+GROUP BY industry
+ORDER BY avg_remote_ratio DESC;
+
+--This table demonstrates how industries such as manufacturing and healthcare have the highest remote ratio, with finance and IT having the least average remote ration--
+
+SELECT 
+  "AI Impact Level",
+  ROUND(AVG("Remote Work Ratio (%)"), 2) AS avg_remote_ratio
+FROM ai_job_trends_dataset
+GROUP BY "AI Impact Level"
+ORDER BY avg_remote_ratio DESC;
+
+--This table demonstrates how the lower AI impact levels tend to have a higher remote ratio--
+
+--Lets take a look at remote work to see which locations have the highest remote ratios--
+
+SELECT 
+  location,
+  ROUND(AVG("Remote Work Ratio (%)"), 2) AS avg_remote_ratio,
+  COUNT(*) AS total_jobs
+FROM ai_job_trends_dataset
+GROUP BY location
+HAVING COUNT(*) > 10 -- Optional filter to remove outliers
+ORDER BY avg_remote_ratio DESC;
+
+--This data demonstrates that Brazil has the most remote average rato, while the US does not--
+
+--We can take a look at the industry jobs that have the lowest AI impact level--
+
+WITH min_impact AS (
+  SELECT 
+    industry,
+    MIN(CASE "AI Impact Level"
+      WHEN 'Low' THEN 1
+      WHEN 'Moderate' THEN 2
+      WHEN 'High' THEN 3
+    END) AS min_impact_rank
+  FROM ai_job_trends_dataset
+  GROUP BY industry
+)
+
+SELECT 
+  a.industry,
+  a."job title",
+  a."AI Impact Level",
+  a."Required Education",
+  a."Median Salary (USD)"
+FROM ai_job_trends_dataset a
+JOIN min_impact m
+  ON a.industry = m.industry
+WHERE 
+  CASE a."AI Impact Level"
+    WHEN 'Low' THEN 1
+    WHEN 'Moderate' THEN 2
+    WHEN 'High' THEN 3
+  END = m.min_impact_rank
+ORDER BY a.industry, a."Median Salary (USD)" DESC;
+
+--this table provides us with several jobs in each industry that have the lowest AI impact level, and the education required, --
+--lets take a look at the top paying, lowest ai impact per job industry--
+
+WITH min_impact AS (
+  SELECT 
+    industry,
+    MIN(CASE "AI Impact Level"
+      WHEN 'Low' THEN 1
+      WHEN 'Moderate' THEN 2
+      WHEN 'High' THEN 3
+    END) AS min_impact_rank
+  FROM ai_job_trends_dataset
+  GROUP BY industry
+),
+filtered_jobs AS (
+  SELECT 
+    a.industry,
+    a."job title",
+    a."AI Impact Level",
+    a."Required Education",
+    a."Median Salary (USD)",
+    ROW_NUMBER() OVER (
+      PARTITION BY a.industry 
+      ORDER BY a."Median Salary (USD)" DESC
+    ) AS rn
+  FROM ai_job_trends_dataset a
+  JOIN min_impact m
+    ON a.industry = m.industry
+  WHERE 
+    CASE a."AI Impact Level"
+      WHEN 'Low' THEN 1
+      WHEN 'Moderate' THEN 2
+      WHEN 'High' THEN 3
+    END = m.min_impact_rank
+)
+
+SELECT 
+  industry,
+  "job title",
+  "AI Impact Level",
+  "Required Education",
+  "Median Salary (USD)"
+FROM filtered_jobs
+WHERE rn = 1
+ORDER BY "Median Salary (USD)" DESC;
+
+--this data set analyzes the top paying and lowest ai impact job per industry. this data set particularly tells us that there is requred education that is much higher to earn these types of roles--
+
+
+--              CONCLUSION                --
+
+-- This analysis of AI job trends offers a comprehensive view of how Artificial Intelligence (AI) 
+-- is reshaping the labor market across industries. Based on the data explored, several key conclusions can be drawn:
+
+-- 1. Projected Growth Is Not Evenly Distributed:
+--    While industries like IT and Healthcare show strong projected growth in job openings by 2030,
+--    others such as Education and Transportation are expected to decline or remain stagnant.
+--    This suggests a shift in labor demand driven by evolving technology, population needs, or economic factors.
+
+-- 2. AI Will Disrupt Some Industries More Than Others:
+--    Industries like Finance and Administrative Services have a high percentage of roles vulnerable to AI impact,
+--    despite showing some projected growth. In contrast, Education has a low AI impact level, indicating its job losses
+--    are more likely due to external factors rather than automation.
+
+-- 3. Education Level Influences AI Risk:
+--    Jobs requiring only a high school diploma or associate degree are more likely to be impacted by AI,
+--    while roles requiring a bachelor's degree or higher tend to have lower AI risk.
+--    This highlights the importance of higher education or specialized skills in future-proofing careers.
+
+-- 4. Remote Work Trends Vary Significantly by Industry:
+--    Industries like Manufacturing and Healthcare report higher average remote work ratios,
+--    while Finance and IT — surprisingly — offer less remote flexibility on average.
+--    This may reflect operational or data security needs despite their tech-heavy nature.
+
+-- 5. AI Risk Doesn't Always Correlate With Lower Salaries:
+--    Jobs with higher AI impact tend to have higher median salaries, especially in sectors like tech and finance.
+--    This presents a trade-off: well-paying roles may also face greater automation risk in the near future.
+
+-- 6. Safe and High-Paying Roles Exist — But Require More Education:
+--    Jobs with the lowest AI impact and highest pay across industries often require a bachelor's or master's degree.
+--    These include strategic, research-based, and design-oriented positions that are less likely to be automated.
+
+-- Final Thought:
+--    AI will not eliminate all jobs — but it will change the nature of work.
+--    Understanding which roles are growing, which are shrinking, and which are safest from automation
+--    can help individuals and organizations make more informed decisions about career planning,
+--    education, and workforce investments in an AI-driven future.
