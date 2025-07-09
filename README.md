@@ -1,4 +1,5 @@
 SQL Data Projects by Keila Estrada
+
 Welcome! This repository contains two exploratory data analysis (EDA) projects written in SQL that demonstrate my ability to extract insights, evaluate trends, and develop data-driven recommendations using real-world datasets.
 
 Project 1: Kickstarter Projects Analysis
